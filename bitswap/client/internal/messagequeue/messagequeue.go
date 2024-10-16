@@ -96,6 +96,7 @@ type MessageQueue struct {
 	rebroadcastIntervalLk sync.Mutex
 	rebroadcastInterval   time.Duration
 	rebroadcastTimer      *clock.Timer
+	rebroadcastDisabled   bool
 	// For performance reasons we just clear out the fields of the message
 	// instead of creating a new one every time.
 	msg bsmsg.BitSwapMessage
@@ -214,14 +215,14 @@ type DontHaveTimeoutManager interface {
 }
 
 // New creates a new MessageQueue.
-func New(ctx context.Context, p peer.ID, network MessageNetwork, onDontHaveTimeout OnDontHaveTimeout) *MessageQueue {
+func New(ctx context.Context, p peer.ID, network MessageNetwork, onDontHaveTimeout OnDontHaveTimeout, disableRebroadcast bool) *MessageQueue {
 	onTimeout := func(ks []cid.Cid) {
 		log.Infow("Bitswap: timeout waiting for blocks", "cids", ks, "peer", p)
 		onDontHaveTimeout(p, ks)
 	}
 	clock := clock.New()
 	dhTimeoutMgr := newDontHaveTimeoutMgr(newPeerConnection(p, network), onTimeout, clock)
-	return newMessageQueue(ctx, p, network, maxMessageSize, sendErrorBackoff, maxValidLatency, dhTimeoutMgr, clock, nil)
+	return newMessageQueue(ctx, p, network, maxMessageSize, sendErrorBackoff, maxValidLatency, dhTimeoutMgr, clock, nil, disableRebroadcast)
 }
 
 type messageEvent int
@@ -243,6 +244,7 @@ func newMessageQueue(
 	dhTimeoutMgr DontHaveTimeoutManager,
 	clock clock.Clock,
 	events chan messageEvent,
+	disableRebroadcast bool,
 ) *MessageQueue {
 	ctx, cancel := context.WithCancel(ctx)
 	return &MessageQueue{
@@ -258,6 +260,7 @@ func newMessageQueue(
 		outgoingWork:        make(chan time.Time, 1),
 		responses:           make(chan []cid.Cid, 8),
 		rebroadcastInterval: defaultRebroadcastInterval,
+		rebroadcastDisabled: disableRebroadcast,
 		sendErrorBackoff:    sendErrorBackoff,
 		maxValidLatency:     maxValidLatency,
 		priority:            maxPriority,
@@ -390,7 +393,9 @@ func (mq *MessageQueue) SetRebroadcastInterval(delay time.Duration) {
 // Startup starts the processing of messages and rebroadcasting.
 func (mq *MessageQueue) Startup() {
 	mq.rebroadcastIntervalLk.Lock()
-	mq.rebroadcastTimer = mq.clock.Timer(mq.rebroadcastInterval)
+	if !mq.rebroadcastDisabled {
+		mq.rebroadcastTimer = mq.clock.Timer(mq.rebroadcastInterval)
+	}
 	mq.rebroadcastIntervalLk.Unlock()
 	go mq.runQueue()
 }
@@ -421,10 +426,15 @@ func (mq *MessageQueue) runQueue() {
 		<-scheduleWork.C
 	}
 
+	var rebroadcastCh <-chan time.Time
+	if !mq.rebroadcastDisabled {
+		rebroadcastCh = mq.rebroadcastTimer.C
+	}
+
 	var workScheduled time.Time
 	for {
 		select {
-		case <-mq.rebroadcastTimer.C:
+		case <-rebroadcastCh:
 			mq.rebroadcastWantlist()
 
 		case when := <-mq.outgoingWork:
@@ -488,9 +498,9 @@ func (mq *MessageQueue) transferRebroadcastWants() int {
 	mq.wllock.Lock()
 	defer mq.wllock.Unlock()
 
-	mq.rebroadcastIntervalLk.RLock()
+	mq.rebroadcastIntervalLk.Lock()
 	rebroadcastInterval := mq.rebroadcastInterval
-	mq.rebroadcastIntervalLk.RUnlock()
+	mq.rebroadcastIntervalLk.Unlock()
 
 	now := time.Now()
 	var toRebroadcast int

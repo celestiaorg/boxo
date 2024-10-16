@@ -84,6 +84,12 @@ func WithBlockReceivedNotifier(brn BlockReceivedNotifier) Option {
 	}
 }
 
+func WithDisabledMessageQueueRebroadcast(disable bool) Option {
+	return func(bs *Client) {
+		bs.disableMessageQueueRebroadcast = disable
+	}
+}
+
 // WithoutDuplicatedBlockStats disable collecting counts of duplicated blocks
 // received. This counter requires triggering a blockstore.Has() call for
 // every block received by launching goroutines in parallel. In the worst case
@@ -127,7 +133,7 @@ func New(parent context.Context, network bsnet.BitSwapNetwork, bstore blockstore
 		}
 	}
 	peerQueueFactory := func(ctx context.Context, p peer.ID) bspm.PeerQueue {
-		return bsmq.New(ctx, p, network, onDontHaveTimeout)
+		return bsmq.New(ctx, p, network, onDontHaveTimeout, bs.disableMessageQueueRebroadcast)
 	}
 
 	sim := bssim.New()
@@ -232,6 +238,9 @@ type Client struct {
 
 	// dupMetric will stay at 0
 	skipDuplicatedBlocksStats bool
+
+	// disable per-peer rebroadacsting of wants in the message queue
+	disableMessageQueueRebroadcast bool
 }
 
 type counters struct {

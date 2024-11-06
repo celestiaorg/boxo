@@ -443,7 +443,7 @@ func (s *Session) handleReceive(ks []cid.Cid) {
 
 	// Inform the SessionInterestManager that this session is no longer
 	// expecting to receive the wanted keys
-	s.sim.RemoveSessionWants(s.id, wanted)
+	s.sim.RemoveSessionInterested(s.id, wanted)
 
 	s.idleTick.Stop()
 

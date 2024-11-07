@@ -15,7 +15,6 @@ import (
 	delay "github.com/ipfs/go-ipfs-delay"
 	logging "github.com/ipfs/go-log/v2"
 	peer "github.com/libp2p/go-libp2p/core/peer"
-	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
 
@@ -304,28 +303,31 @@ func (s *Session) run(ctx context.Context) {
 
 	s.idleTick = time.NewTimer(s.initialSearchDelay)
 	s.periodicSearchTimer = time.NewTimer(s.periodicSearchDelay.NextWaitTime())
-	sessionSpan := trace.SpanFromContext(ctx)
 	for {
 		select {
 		case oper := <-s.incoming:
 			switch oper.op {
 			case opReceive:
 				// Received blocks
-				sessionSpan.AddEvent("Session.ReceiveOp")
+				_, span := internal.StartSpan(ctx, "Session.ReceiveOp")
 				s.handleReceive(oper.keys)
+				span.End()
 			case opWant:
 				// Client wants blocks
-				sessionSpan.AddEvent("Session.WantOp")
+				_, span := internal.StartSpan(ctx, "Session.WantOp")
 				s.wantBlocks(ctx, oper.keys)
+				span.End()
 			case opCancel:
 				// Wants were cancelled
-				sessionSpan.AddEvent("Session.WantCancelOp")
+				_, span := internal.StartSpan(ctx, "Session.CancelOp")
 				s.sw.CancelPending(oper.keys)
 				s.sws.Cancel(oper.keys)
+				span.End()
 			case opWantsSent:
 				// Wants were sent to a peer
-				sessionSpan.AddEvent("Session.WantsSentOp")
+				_, span := internal.StartSpan(ctx, "Session.WantsSentOp")
 				s.sw.WantsSent(oper.keys)
+				span.End()
 			case opBroadcast:
 				// Broadcast want-haves to all peers
 				opCtx, span := internal.StartSpan(ctx, "Session.BroadcastOp")

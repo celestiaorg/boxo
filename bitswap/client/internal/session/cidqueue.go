@@ -61,3 +61,22 @@ func (cq *cidQueue) Has(c cid.Cid) bool {
 func (cq *cidQueue) Len() int {
 	return cq.eset.Len()
 }
+
+func (cq *cidQueue) GC() {
+	if cq.eset.Len() == 0 {
+		// fast path
+		cq.elems = nil
+		return
+	}
+
+	if len(cq.elems) > cq.eset.Len() {
+		cleaned := cq.elems[:0]
+		for _, c := range cq.elems {
+			if cq.eset.Has(c) {
+				cleaned = append(cleaned, c)
+			}
+		}
+		clear(cq.elems[len(cleaned):])
+		cq.elems = cleaned
+	}
+}

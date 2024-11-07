@@ -332,6 +332,7 @@ func (sws *sessionWantSender) processAvailability(availability map[peer.ID]bool)
 			// Reset the count of consecutive DONT_HAVEs received from the
 			// peer
 			delete(sws.peerConsecutiveDontHaves, p)
+			sws.peerRspTrkr.cleanup(p)
 		}
 	}
 

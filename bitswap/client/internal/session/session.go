@@ -111,6 +111,7 @@ type Session struct {
 	sprm           SessionPeerManager
 	providerFinder ProviderFinder
 	sim            *bssim.SessionInterestManager
+	bpm            *bsbpm.BlockPresenceManager
 
 	sw  sessionWants
 	sws sessionWantSender
@@ -162,6 +163,7 @@ func New(
 		sprm:                sprm,
 		providerFinder:      providerFinder,
 		sim:                 sim,
+		bpm:                 bpm,
 		incoming:            make(chan op, 128),
 		latencyTrkr:         latencyTracker{},
 		notif:               notif,
@@ -443,7 +445,10 @@ func (s *Session) handleReceive(ks []cid.Cid) {
 
 	// Inform the SessionInterestManager that this session is no longer
 	// expecting to receive the wanted keys
-	s.sim.RemoveSessionInterested(s.id, wanted)
+	deleted := s.sim.RemoveSessionInterested(s.id, wanted)
+	// make sure to clean up the block presence manager
+	// for keys no session is interested in
+	s.bpm.RemoveKeys(deleted)
 
 	s.idleTick.Stop()
 

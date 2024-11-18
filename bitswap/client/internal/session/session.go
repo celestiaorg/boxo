@@ -189,13 +189,6 @@ func (s *Session) Shutdown() {
 
 // ReceiveFrom receives incoming blocks from the given peer.
 func (s *Session) ReceiveFrom(from peer.ID, ks []cid.Cid, haves []cid.Cid, dontHaves []cid.Cid) {
-	// The SessionManager tells each Session about all keys that it may be
-	// interested in. Here the Session filters the keys to the ones that this
-	// particular Session is interested in.
-	interestedRes := s.sim.FilterSessionInterested(s.id, ks, haves, dontHaves)
-	ks = interestedRes[0]
-	haves = interestedRes[1]
-	dontHaves = interestedRes[2]
 	s.logReceiveFrom(from, ks, haves, dontHaves)
 
 	// Inform the session want sender that a message has been received

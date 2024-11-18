@@ -154,11 +154,8 @@ func (sm *SessionManager) GetNextSessionID() uint64 {
 
 // ReceiveFrom is called when a new message is received
 func (sm *SessionManager) ReceiveFrom(ctx context.Context, p peer.ID, blks []cid.Cid, haves []cid.Cid, dontHaves []cid.Cid) {
-	// Record block presence for HAVE / DONT_HAVE
-	sm.blockPresenceManager.ReceiveFrom(p, haves, dontHaves)
-
 	// Notify each session that is interested in the blocks / HAVEs / DONT_HAVEs
-	for _, id := range sm.sessionInterestManager.InterestedSessions(blks, haves, dontHaves) {
+	for id, keys := range sm.sessionInterestManager.InterestedSessions(blks, haves, dontHaves) {
 		sm.sessLk.Lock()
 		if sm.sessions == nil { // check if SessionManager was shutdown
 			sm.sessLk.Unlock()
@@ -168,6 +165,13 @@ func (sm *SessionManager) ReceiveFrom(ctx context.Context, p peer.ID, blks []cid
 		sm.sessLk.Unlock()
 
 		if ok {
+			blks = keys[0]
+			haves = keys[1]
+			dontHaves = keys[2]
+			// Record block presence for HAVE / DONT_HAVE
+			// must be called before Seession.ReceiveFrom
+			sm.blockPresenceManager.ReceiveFrom(p, haves, dontHaves)
+
 			sess.ReceiveFrom(p, blks, haves, dontHaves)
 		}
 	}

@@ -81,6 +81,12 @@ func WithDontHaveTimeoutConfig(cfg *DontHaveTimeoutConfig) Option {
 	}
 }
 
+func WithPerPeerRebroadcastDisabled(disabled bool) Option {
+	return func(bs *Client) {
+		bs.perPeerRebroadcastDisabled = disabled
+	}
+}
+
 // WithPerPeerSendDelay determines how long to wait, based on the number of
 // peers, for wants to accumulate before sending a bitswap message to peers. A
 // value of 0 uses bitswap messagequeue default.
@@ -280,7 +286,9 @@ func New(parent context.Context, network bsnet.BitSwapNetwork, providerFinder ro
 	peerQueueFactory := func(ctx context.Context, p peer.ID) bspm.PeerQueue {
 		return bsmq.New(ctx, p, network, onDontHaveTimeout,
 			bsmq.WithDontHaveTimeoutConfig(bs.dontHaveTimeoutConfig),
-			bsmq.WithPerPeerSendDelay(bs.perPeerSendDelay))
+			bsmq.WithPerPeerSendDelay(bs.perPeerSendDelay),
+			bsmq.WithPerPeerRebroadcastDisabled(bs.perPeerRebroadcastDisabled),
+		)
 	}
 
 	sim := bssim.New()
@@ -402,10 +410,11 @@ type Client struct {
 	// dupMetric will stay at 0
 	skipDuplicatedBlocksStats bool
 
-	perPeerSendDelay time.Duration
-
 	// Broadcast control configuration.
 	bcastControl bspm.BroadcastControl
+
+	perPeerSendDelay           time.Duration
+	perPeerRebroadcastDisabled bool
 }
 
 type counters struct {

@@ -128,11 +128,11 @@ func (pwm *peerWantManager) addPeer(peerQueue PeerQueue, p peer.ID) {
 		peerQueue:  peerQueue,
 	}
 
-	// Broadcast any live want-haves to the newly connected peer
-	if pwm.broadcastWants.Len() > 0 {
-		wants := pwm.broadcastWants.Keys()
-		peerQueue.AddBroadcastWantHaves(wants)
-	}
+	//// Broadcast any live want-haves to the newly connected peer
+	//if pwm.broadcastWants.Len() > 0 {
+	//	wants := pwm.broadcastWants.Keys()
+	//	peerQueue.AddBroadcastWantHaves(wants)
+	//}
 }
 
 // RemovePeer removes a peer and its associated wants from tracking

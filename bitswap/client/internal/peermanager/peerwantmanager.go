@@ -386,11 +386,11 @@ func (pwm *peerWantManager) sendWants(p peer.ID, wantBlocks []cid.Cid, wantHaves
 
 		// If the CID has not been sent as a want-block or want-have
 		if !pws.wantBlocks.Has(c) && !pws.wantHaves.Has(c) {
-			// Increment the total wants gauge
-			peerCounts := pwm.wantPeerCounts(c)
-			if !peerCounts.wanted() {
-				pwm.wantGauge.Inc()
-			}
+			//// Increment the total wants gauge
+			//peerCounts := pwm.wantPeerCounts(c)
+			//if !peerCounts.wanted() {
+			//	pwm.wantGauge.Inc()
+			//}
 
 			// Record that the CID was sent as a want-have
 			pws.wantHaves.Add(c)

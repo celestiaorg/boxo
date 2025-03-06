@@ -99,6 +99,7 @@ func (pm *PeerManager) Connected(p peer.ID) {
 
 	// Inform the sessions that the peer has connected
 	pm.signalAvailability(p, true)
+	log.Debugf("peer %s connected", p)
 }
 
 // Disconnected is called to remove a peer from the pool.
@@ -121,6 +122,8 @@ func (pm *PeerManager) Disconnected(p peer.ID) {
 	pm.signalAvailability(p, false)
 
 	pq.Shutdown()
+
+	log.Debugf("peer %s disconnected", p)
 }
 
 // ResponseReceived is called when a message is received from the network.

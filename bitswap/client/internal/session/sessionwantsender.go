@@ -351,6 +351,8 @@ func (sws *sessionWantSender) trackWant(c cid.Cid) {
 	for _, p := range sws.spm.Peers() {
 		sws.updateWantBlockPresence(c, p)
 	}
+
+	sws.wants[c].calculateBestPeer()
 }
 
 // untrackWant removes an entry from the map of CID -> want info
@@ -690,7 +692,6 @@ func newWantInfo(prt *peerResponseTracker) *wantInfo {
 // setPeerBlockPresence sets the block presence for the given peer
 func (wi *wantInfo) setPeerBlockPresence(p peer.ID, bp BlockPresence) {
 	wi.blockPresence[p] = bp
-	wi.calculateBestPeer()
 
 	// If a peer informed us that it has a block then make sure the want is no
 	// longer flagged as exhausted (exhausted means no peers have the block)

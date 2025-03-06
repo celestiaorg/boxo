@@ -186,8 +186,8 @@ func (sm *SessionManager) ReceiveFrom(ctx context.Context, p peer.ID, blks []cid
 func (sm *SessionManager) CancelSessionWants(sesid uint64, wants []cid.Cid) {
 	// Remove session's interest in the given blocks - returns the keys that no
 	// session is interested in anymore.
-	cancelKs := sm.sessionInterestManager.RemoveSessionWants(sesid, wants)
-	sm.cancelWants(cancelKs)
+	_ = sm.sessionInterestManager.RemoveSessionWants(sesid, wants)
+	sm.cancelWants(wants)
 }
 
 func (sm *SessionManager) cancelWants(wants []cid.Cid) {

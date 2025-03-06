@@ -349,7 +349,7 @@ func (sws *sessionWantSender) trackWant(c cid.Cid) {
 	// For each available peer, register any information we know about
 	// whether the peer has the block
 	for _, p := range sws.spm.Peers() {
-		sws.updateWantBlockPresence(c, p)
+		sws.updateWantBlockPresence(c, p, false)
 	}
 
 	sws.wants[c].calculateBestPeer()
@@ -406,7 +406,7 @@ func (sws *sessionWantSender) processUpdates(updates []update) []cid.Cid {
 			dontHaves.Add(c)
 
 			// Update the block presence for the peer
-			sws.updateWantBlockPresence(c, upd.from)
+			sws.updateWantBlockPresence(c, upd.from, true)
 
 			// If we were waiting for a response from this peer, clear
 			// sentTo so that we can send the want to another peer
@@ -422,7 +422,7 @@ func (sws *sessionWantSender) processUpdates(updates []update) []cid.Cid {
 			// If we haven't already received a block for the want
 			if !blkCids.Has(c) {
 				// Update the block presence for the peer
-				sws.updateWantBlockPresence(c, upd.from)
+				sws.updateWantBlockPresence(c, upd.from, true)
 			}
 
 			// Clear the consecutive DONT_HAVE count for the peer
@@ -620,7 +620,7 @@ func (sws *sessionWantSender) removeWant(c cid.Cid) *wantInfo {
 func (sws *sessionWantSender) updateWantsPeerAvailability(p peer.ID, isNowAvailable bool) {
 	for c, wi := range sws.wants {
 		if isNowAvailable {
-			sws.updateWantBlockPresence(c, p)
+			sws.updateWantBlockPresence(c, p, false)
 		} else {
 			wi.removePeer(p)
 		}
@@ -629,7 +629,7 @@ func (sws *sessionWantSender) updateWantsPeerAvailability(p peer.ID, isNowAvaila
 
 // updateWantBlockPresence is called when a HAVE / DONT_HAVE is received for the given
 // want / peer
-func (sws *sessionWantSender) updateWantBlockPresence(c cid.Cid, p peer.ID) {
+func (sws *sessionWantSender) updateWantBlockPresence(c cid.Cid, p peer.ID, recalcBestPeer bool) {
 	wi, ok := sws.wants[c]
 	if !ok {
 		return
@@ -647,6 +647,10 @@ func (sws *sessionWantSender) updateWantBlockPresence(c cid.Cid, p peer.ID) {
 		wi.setPeerBlockPresence(p, BPDontHave)
 	default:
 		wi.setPeerBlockPresence(p, BPUnknown)
+	}
+
+	if recalcBestPeer {
+		wi.calculateBestPeer()
 	}
 }
 
@@ -692,7 +696,6 @@ func newWantInfo(prt *peerResponseTracker) *wantInfo {
 // setPeerBlockPresence sets the block presence for the given peer
 func (wi *wantInfo) setPeerBlockPresence(p peer.ID, bp BlockPresence) {
 	wi.blockPresence[p] = bp
-
 	// If a peer informed us that it has a block then make sure the want is no
 	// longer flagged as exhausted (exhausted means no peers have the block)
 	if bp == BPHave {

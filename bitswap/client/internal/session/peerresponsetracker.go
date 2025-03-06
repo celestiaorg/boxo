@@ -26,23 +26,23 @@ func (prt *peerResponseTracker) receivedBlockFrom(from peer.ID) {
 
 // choose picks a peer from the list of candidate peers, favouring those peers
 // that were first to send us previous blocks
-func (prt *peerResponseTracker) choose(peers []peer.ID) peer.ID {
+func (prt *peerResponseTracker) choose(peers map[peer.ID]BlockPresence) peer.ID {
 	if len(peers) == 0 {
 		return ""
 	}
 
 	// Find the total received blocks for all candidate peers
 	total := 0
-	for _, p := range peers {
-		total += prt.getPeerCount(p)
+	for p, bp := range peers {
+		total += prt.getPeerScore(p, bp)
 	}
 
 	// Choose one of the peers with a chance proportional to the number
 	// of blocks received from that peer
 	rnd := rand.Float64()
 	counted := 0.0
-	for _, p := range peers {
-		counted += float64(prt.getPeerCount(p)) / float64(total)
+	for p, bp := range peers {
+		counted += float64(prt.getPeerScore(p, bp)) / float64(total)
 		if counted > rnd {
 			return p
 		}
@@ -50,8 +50,25 @@ func (prt *peerResponseTracker) choose(peers []peer.ID) peer.ID {
 
 	// We shouldn't get here unless there is some weirdness with floating point
 	// math that doesn't quite cover the whole range of peers in the for loop
-	// so just choose the last peer.
-	return peers[len(peers)-1]
+	// so just choose the first peer.
+	for p := range peers {
+		return p
+	}
+
+	return ""
+}
+
+func (prt *peerResponseTracker) getPeerScore(p peer.ID, bp BlockPresence) int {
+	score := prt.getPeerCount(p)
+	switch bp {
+	case BPHave:
+		score += 10
+	case BPUnknown:
+		score += 1
+	default:
+	}
+
+	return score
 }
 
 // getPeerCount returns the number of times the peer was first to send us a

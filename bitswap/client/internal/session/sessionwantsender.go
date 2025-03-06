@@ -716,41 +716,5 @@ func (wi *wantInfo) removePeer(p peer.ID) {
 
 // calculateBestPeer finds the best peer to send the want to next
 func (wi *wantInfo) calculateBestPeer() {
-	// Recalculate the best peer
-	bestBP := BPDontHave
-	bestPeer := peer.ID("")
-
-	// Find the peer with the best block presence, recording how many peers
-	// share the block presence
-	countWithBest := 0
-	for p, bp := range wi.blockPresence {
-		if bp > bestBP {
-			bestBP = bp
-			bestPeer = p
-			countWithBest = 1
-		} else if bp == bestBP {
-			countWithBest++
-		}
-	}
-	wi.bestPeer = bestPeer
-
-	// If no peer has a block presence better than DONT_HAVE, bail out
-	if bestPeer == "" {
-		return
-	}
-
-	// If there was only one peer with the best block presence, we're done
-	if countWithBest <= 1 {
-		return
-	}
-
-	// There were multiple peers with the best block presence, so choose one of
-	// them to be the best
-	var peersWithBest []peer.ID
-	for p, bp := range wi.blockPresence {
-		if bp == bestBP {
-			peersWithBest = append(peersWithBest, p)
-		}
-	}
-	wi.bestPeer = wi.peerRspTrkr.choose(peersWithBest)
+	wi.bestPeer = wi.peerRspTrkr.choose(wi.blockPresence)
 }
